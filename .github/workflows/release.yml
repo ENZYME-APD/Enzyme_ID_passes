@@ -46,7 +46,7 @@ jobs:
       - name: Build Yak package
         shell: pwsh
         run: |
-          Invoke-WebRequest https://files.mcneel.com/yak/tools/latest/yak.exe -OutFile yak.exe
+          Invoke-WebRequest https://files.mcneel.com/yak/tools/0.15.1/win-x64/yak.exe -OutFile yak.exe
           Push-Location dist/stage
           ../../yak.exe build --platform any
           Move-Item *.yak ..
