@@ -1,0 +1,81 @@
+name: Build & release
+
+# Every push builds the plugin.
+# A tag like v0.2.0 also creates a GitHub Release with the .rhp files and the .yak package,
+# and publishes to the Rhino package server when the YAK_TOKEN secret is set
+# (create it once with `yak login --ci` and add it under Settings > Secrets > Actions).
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      YAK_TOKEN: ${{ secrets.YAK_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        run: dotnet build plugin/EnzymeIDPasses.csproj -c Release
+
+      - name: Stage package
+        shell: pwsh
+        run: |
+          $stage = "dist/stage"
+          New-Item -ItemType Directory -Force "$stage/net48", "$stage/net7.0" | Out-Null
+          Copy-Item plugin/bin/Release/net48/EnzymeIDPasses.rhp  "$stage/net48/"
+          Copy-Item plugin/bin/Release/net7.0/EnzymeIDPasses.rhp "$stage/net7.0/"
+          Copy-Item yak/manifest.yml, assets/icon.png, LICENSE "$stage/"
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $v = "${{ github.ref_name }}".TrimStart("v")
+            (Get-Content "$stage/manifest.yml") -replace '^version:.*', "version: $v" | Set-Content "$stage/manifest.yml"
+          }
+
+      - name: Build Yak package
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://files.mcneel.com/yak/tools/latest/yak.exe -OutFile yak.exe
+          Push-Location dist/stage
+          ../../yak.exe build --platform any
+          Move-Item *.yak ..
+          Pop-Location
+          Get-ChildItem dist/*.yak
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EnzymeIDPasses
+          path: |
+            dist/*.yak
+            dist/stage/net48/EnzymeIDPasses.rhp
+            dist/stage/net7.0/EnzymeIDPasses.rhp
+            script/EnzymeIDPasses.py
+
+      - name: GitHub Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Copy-Item dist/stage/net7.0/EnzymeIDPasses.rhp dist/EnzymeIDPasses-net7.0.rhp
+          Copy-Item dist/stage/net48/EnzymeIDPasses.rhp  dist/EnzymeIDPasses-net48.rhp
+          $yak = (Get-ChildItem dist/*.yak).FullName
+          gh release create "${{ github.ref_name }}" $yak dist/EnzymeIDPasses-net7.0.rhp dist/EnzymeIDPasses-net48.rhp script/EnzymeIDPasses.py --title "Enzyme ID Passes ${{ github.ref_name }}" --generate-notes
+
+      - name: Publish to Rhino package server
+        if: github.ref_type == 'tag' && env.YAK_TOKEN != ''
+        shell: pwsh
+        run: |
+          $yak = (Get-ChildItem dist/*.yak).FullName
+          ./yak.exe push $yak

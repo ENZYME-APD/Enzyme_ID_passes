@@ -1,0 +1,10 @@
+bin/
+obj/
+dist/
+*.yak
+*.user
+.vs/
+.idea/
+__pycache__/
+*.pyc
+.DS_Store

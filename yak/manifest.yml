@@ -1,0 +1,21 @@
+---
+name: EnzymeIDPasses
+version: 0.2.0
+authors:
+- Enzyme Digital Solutions
+description: >
+  Export Material, Object and Layer ID passes, a surface normals pass and a standard
+  viewport capture for every saved Named View. ID colours are drawn through a temporary
+  display override, so materials in the document are never changed. Includes a legend
+  sheet showing each ID colour next to its material texture.
+url: https://github.com/ENZYME-APD/Enzyme_ID_passes
+icon: icon.png
+keywords:
+- render
+- material id
+- id pass
+- mask
+- named views
+- post-production
+- photoshop
+- enzyme

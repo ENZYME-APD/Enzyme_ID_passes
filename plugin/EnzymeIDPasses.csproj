@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	
+  <PropertyGroup>
+    <!-- Select the framework(s) you wish to target.
+        Rhino 6: net45
+        Rhino 7: net48
+        Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
+        Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
+        Rhino 9 Windows: net48, net8.0, net8.0-windows, net8.0-windows10.0.22000.0, etc
+        Rhino 9 Mac: net8.0, net8.0-macos, net8.0-macos12.0, etc
+    -->
+    <TargetFrameworks>net7.0;net48</TargetFrameworks>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <TargetExt>.rhp</TargetExt>
+    <NoWarn>NU1701;CA1416</NoWarn>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <!-- Specifies information for Assembly and Yak -->
+    <Version>0.2.0</Version> <!-- Sets the Yak Version Attribute -->
+    <Title>Enzyme ID Passes</Title>
+    <Company>Enzyme Digital Solutions</Company><!-- Sets the Yak Author Attribute -->
+    <Description>Export Material / Object / Layer ID passes from Named Views using a temporary display override.</Description><!-- Sets the Yak Description Attribute -->
+    <!--<AssemblyName>EnzymeIDPasses</AssemblyName>--><!-- Sets the Yak Name Attribute -->
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="RhinoCommon" Version="8.0.23304.9001" ExcludeAssets="runtime" />
+    <PackageReference Include="System.Drawing.Common" Version="7.0.0" ExcludeAssets="runtime" Condition="'$(TargetFramework)' == 'net7.0'" />
+    <EmbeddedResource Include="EmbeddedResources\**\*" />
+  </ItemGroup>
+  
+
+</Project>
