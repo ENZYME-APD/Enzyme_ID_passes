@@ -92,8 +92,15 @@ jobs:
           gh release create $tag $yak dist/EnzymeIDPasses-net7.0.rhp dist/EnzymeIDPasses-net48.rhp script/EnzymeIDPasses.py --target "${{ github.sha }}" --title "Enzyme ID Passes $tag" --generate-notes
 
       - name: Publish to Rhino package server
-        if: steps.ver.outputs.release == 'true' && env.YAK_TOKEN != ''
+        # Runs for main/tag pushes; skips if this version is already on the server.
+        if: github.event_name == 'push' && (github.ref_type == 'tag' || github.ref_name == 'main') && env.YAK_TOKEN != ''
         shell: pwsh
         run: |
+          $lines = @($env:YAK_TOKEN -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+          if ($lines.Count -ne 1) { Write-Host "::warning::YAK_TOKEN has $($lines.Count) non-empty lines; using the last one." }
+          $env:YAK_TOKEN = $lines[-1]
+          $v = "${{ steps.ver.outputs.version }}"
+          $found = ./yak.exe search --all --prerelease EnzymeIDPasses 2>$null | Out-String
+          if ($found -match "EnzymeIDPasses \($([regex]::Escape($v))\)") { Write-Host "v$v already on the package server - skipping"; exit 0 }
           $yak = (Get-ChildItem dist/*.yak).FullName
           ./yak.exe push $yak
