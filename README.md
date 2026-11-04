@@ -50,7 +50,7 @@ dotnet build plugin/EnzymeIDPasses.csproj -c Release   # builds net48 + net7.0 .
 ```
 
 ### Releasing
-Push a version tag (`git tag v0.2.0 && git push --tags`). The GitHub Action builds the plugin, attaches the `.rhp` files, the `.yak` and the script to a GitHub Release, and publishes to the Rhino package server if the `YAK_TOKEN` repository secret is set (create it with `yak login --ci`).
+Bump `version:` in `yak/manifest.yml` and push to `main` (pushing a tag like `v0.3.0` also works). When that version has no GitHub Release yet, the GitHub Action builds the plugin, creates the release with the `.rhp` files, the `.yak` and the script, and publishes to the Rhino package server using the `YAK_TOKEN` repository secret (create it with `yak login --ci`).
 
 ## Contributing
 Issues and pull requests are welcome.

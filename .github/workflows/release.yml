@@ -1,9 +1,10 @@
 name: Build & release
 
 # Every push builds the plugin.
-# A tag like v0.2.0 also creates a GitHub Release with the .rhp files and the .yak package,
-# and publishes to the Rhino package server when the YAK_TOKEN secret is set
-# (create it once with `yak login --ci` and add it under Settings > Secrets > Actions).
+# Releasing: bump `version:` in yak/manifest.yml and push to main (or push a tag like v0.3.0).
+# If that version has no GitHub Release yet, the workflow creates the release (and tag) with
+# the .rhp files, the .yak and the script, then publishes to the Rhino package server when the
+# YAK_TOKEN secret is set (create it once with `yak login --ci`, add under Settings > Secrets > Actions).
 
 on:
   push:
@@ -30,6 +31,24 @@ jobs:
       - name: Build
         run: dotnet build plugin/EnzymeIDPasses.csproj -c Release
 
+      - name: Decide version / release
+        id: ver
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") { $v = "${{ github.ref_name }}".TrimStart("v") }
+          else { $v = ((Select-String -Path yak/manifest.yml -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value).Trim() }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          $release = "false"
+          if ("${{ github.event_name }}" -eq "push" -and ("${{ github.ref_type }}" -eq "tag" -or "${{ github.ref_name }}" -eq "main")) {
+            gh release view "v$v" -R "${{ github.repository }}" *> $null
+            if ($LASTEXITCODE -ne 0) { $release = "true" }
+          }
+          "release=$release" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $v - release: $release"
+          exit 0
+
       - name: Stage package
         shell: pwsh
         run: |
@@ -38,10 +57,8 @@ jobs:
           Copy-Item plugin/bin/Release/net48/EnzymeIDPasses.rhp  "$stage/net48/"
           Copy-Item plugin/bin/Release/net7.0/EnzymeIDPasses.rhp "$stage/net7.0/"
           Copy-Item yak/manifest.yml, assets/icon.png, LICENSE "$stage/"
-          if ("${{ github.ref_type }}" -eq "tag") {
-            $v = "${{ github.ref_name }}".TrimStart("v")
-            (Get-Content "$stage/manifest.yml") -replace '^version:.*', "version: $v" | Set-Content "$stage/manifest.yml"
-          }
+          $v = "${{ steps.ver.outputs.version }}"
+          (Get-Content "$stage/manifest.yml") -replace '^version:.*', "version: $v" | Set-Content "$stage/manifest.yml"
 
       - name: Build Yak package
         shell: pwsh
@@ -63,7 +80,7 @@ jobs:
             script/EnzymeIDPasses.py
 
       - name: GitHub Release
-        if: github.ref_type == 'tag'
+        if: steps.ver.outputs.release == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,10 +88,11 @@ jobs:
           Copy-Item dist/stage/net7.0/EnzymeIDPasses.rhp dist/EnzymeIDPasses-net7.0.rhp
           Copy-Item dist/stage/net48/EnzymeIDPasses.rhp  dist/EnzymeIDPasses-net48.rhp
           $yak = (Get-ChildItem dist/*.yak).FullName
-          gh release create "${{ github.ref_name }}" $yak dist/EnzymeIDPasses-net7.0.rhp dist/EnzymeIDPasses-net48.rhp script/EnzymeIDPasses.py --title "Enzyme ID Passes ${{ github.ref_name }}" --generate-notes
+          $tag = "v${{ steps.ver.outputs.version }}"
+          gh release create $tag $yak dist/EnzymeIDPasses-net7.0.rhp dist/EnzymeIDPasses-net48.rhp script/EnzymeIDPasses.py --target "${{ github.sha }}" --title "Enzyme ID Passes $tag" --generate-notes
 
       - name: Publish to Rhino package server
-        if: github.ref_type == 'tag' && env.YAK_TOKEN != ''
+        if: steps.ver.outputs.release == 'true' && env.YAK_TOKEN != ''
         shell: pwsh
         run: |
           $yak = (Get-ChildItem dist/*.yak).FullName
