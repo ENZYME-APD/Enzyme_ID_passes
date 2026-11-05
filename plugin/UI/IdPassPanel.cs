@@ -21,8 +21,8 @@ namespace EnzymeIDPasses.UI
     readonly CheckBox _lay = new CheckBox { Text = "Layer ID" };
     readonly CheckBox _nrm = new CheckBox { Text = "Normals" };
     readonly CheckBox _vpt = new CheckBox { Text = "Viewport (as displayed)" };
-    readonly NumericStepper _w = new NumericStepper { MinValue = 16, MaxValue = 16000, DecimalPlaces = 0, Width = 80 };
-    readonly NumericStepper _h = new NumericStepper { MinValue = 16, MaxValue = 16000, DecimalPlaces = 0, Width = 80 };
+    readonly NumericStepper _w = new NumericStepper { MinValue = 16, MaxValue = 16000, DecimalPlaces = 0 };
+    readonly NumericStepper _h = new NumericStepper { MinValue = 16, MaxValue = 16000, DecimalPlaces = 0 };
     readonly TextBox _folder = new TextBox();
     readonly CheckBox _snap = new CheckBox { Text = "Snap edges (remove anti-aliasing)" };
     readonly CheckBox _legend = new CheckBox { Text = "Write legend (PNG sheet + CSV/JSON)" };
@@ -51,7 +51,7 @@ namespace EnzymeIDPasses.UI
       _legend.Checked = s.WriteLegend;
       _previewMode.SelectedIndex = 0;
 
-      _legendGrid = new GridView { DataStore = _legendRows, Height = 160, ShowHeader = true };
+      _legendGrid = new GridView { DataStore = _legendRows, Height = 160, ShowHeader = true, GridLines = GridLines.Horizontal };
       var swatchCell = new DrawableCell();
       swatchCell.Paint += (o, e) => { if (e.Item is LegendRow r) e.Graphics.FillRectangle(r.Swatch, e.ClipRectangle); };
       _legendGrid.Columns.Add(new GridColumn { HeaderText = "", Width = 24, DataCell = swatchCell });
@@ -65,7 +65,7 @@ namespace EnzymeIDPasses.UI
       all.Click += (o, e) => _viewChecks.ForEach(c => c.Checked = true);
       none.Click += (o, e) => _viewChecks.ForEach(c => c.Checked = false);
 
-      var browse = new Button { Text = "…", Width = 30 };
+      var browse = new Button { Text = "…", Width = 32 };
       browse.Click += (o, e) =>
       {
         var dlg = new SelectFolderDialog { Title = "Output folder", Directory = _folder.Text };
@@ -85,37 +85,59 @@ namespace EnzymeIDPasses.UI
       _previewMode.SelectedIndexChanged += (o, e) => { if (_preview.Checked == true) UpdatePreview(); };
       _export.Click += (o, e) => DoExport();
 
-      Content = new Scrollable
-      {
-        Border = BorderType.None,
-        Content = new StackLayout
-        {
-          Padding = 8,
-          Spacing = 6,
-          HorizontalContentAlignment = HorizontalAlignment.Stretch,
-          Items =
-          {
-            Header("Named views"),
-            new StackLayout { Orientation = Orientation.Horizontal, Spacing = 4, Items = { refresh, all, none } },
-            new Scrollable { Content = _viewList, Height = 140, Border = BorderType.Line },
-            Header("Passes"),
-            _vpt,
-            new StackLayout { Orientation = Orientation.Horizontal, Spacing = 10, Items = { _mat, _obj, _lay, _nrm } },
-            Header("Resolution"),
-            new StackLayout { Orientation = Orientation.Horizontal, Spacing = 4, VerticalContentAlignment = VerticalAlignment.Center,
-              Items = { _w, new Label { Text = "×" }, _h, new Label { Text = "px" }, fromView } },
-            Header("Output"),
-            new StackLayout { Orientation = Orientation.Horizontal, Spacing = 4, Items = { new StackLayoutItem(_folder, true), browse } },
-            _snap,
-            _legend,
-            Header("Preview"),
-            new StackLayout { Orientation = Orientation.Horizontal, Spacing = 6, VerticalContentAlignment = VerticalAlignment.Center, Items = { _preview, _previewMode } },
-            _legendGrid,
-            _export,
-            _status
-          }
-        }
-      };
+      // Single-column layout: every row fits in MinWidth, so nothing is clipped when the panel
+      // is narrow; below MinWidth the panel scrolls horizontally instead of hiding controls.
+      _w.Width = _h.Width = -1;
+      _previewMode.Width = -1;
+      _status.Width = -1;
+      foreach (var b in new[] { refresh, all, none }) b.MinimumSize = new Size(60, 0);
+
+      var layout = new DynamicLayout { Padding = new Padding(10), DefaultSpacing = new Size(6, 6) };
+
+      layout.AddRow(Header("Named views"));
+      layout.AddSeparateRow(null, refresh, all, none);
+      layout.AddRow(new Scrollable { Content = _viewList, Height = 140, Border = BorderType.Line, ExpandContentWidth = true });
+
+      layout.AddRow(Header("Passes"));
+      layout.BeginVertical(new Padding(4, 0, 0, 0), new Size(4, 4));
+      layout.AddRow(_vpt);
+      layout.AddRow(_mat);
+      layout.AddRow(_obj);
+      layout.AddRow(_lay);
+      layout.AddRow(_nrm);
+      layout.EndVertical();
+
+      layout.AddRow(Header("Resolution"));
+      layout.BeginVertical(spacing: new Size(6, 6));
+      layout.AddRow(FieldLabel("Width"), _w, FieldLabel("px", 20));
+      layout.AddRow(FieldLabel("Height"), _h, FieldLabel("px", 20));
+      layout.EndVertical();
+      layout.AddSeparateRow(null, fromView);
+
+      layout.AddRow(Header("Output"));
+      layout.AddRow(new TableLayout(new TableRow(new TableCell(_folder, true), browse)) { Spacing = new Size(4, 0) });
+      layout.BeginVertical(new Padding(4, 0, 0, 0), new Size(4, 4));
+      layout.AddRow(_snap);
+      layout.AddRow(_legend);
+      layout.EndVertical();
+
+      layout.AddRow(Header("Preview"));
+      layout.BeginVertical(new Padding(4, 0, 0, 0), new Size(6, 6));
+      layout.AddRow(_preview);
+      layout.EndVertical();
+      layout.BeginVertical(spacing: new Size(6, 6));
+      layout.AddRow(FieldLabel("Pass"), _previewMode);
+      layout.EndVertical();
+      layout.AddRow(_legendGrid);
+
+      layout.AddRow(new Label { Height = 4 });
+      _export.Height = 30;
+      layout.AddRow(_export);
+      layout.AddRow(_status);
+      layout.Add(null); // push everything to the top
+
+      layout.MinimumSize = new Size(MinWidth, 0);
+      Content = new Scrollable { Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = true, Content = layout };
 
       RhinoDoc.EndOpenDocument += OnDocChanged;
       RhinoDoc.NewDocument += OnDocChanged;
@@ -123,7 +145,12 @@ namespace EnzymeIDPasses.UI
       RefreshViews();
     }
 
-    static Label Header(string t) => new Label { Text = t, Font = SystemFonts.Bold() };
+    const int MinWidth = 280;
+
+    static Label Header(string t) => new Label { Text = t, Font = SystemFonts.Bold(), VerticalAlignment = VerticalAlignment.Bottom, Height = 24 };
+
+    static Label FieldLabel(string t, int width = 52) =>
+      new Label { Text = t, Width = width, VerticalAlignment = VerticalAlignment.Center };
 
     RhinoDoc Doc => RhinoDoc.FromRuntimeSerialNumber(_docSerial) ?? RhinoDoc.ActiveDoc;
 
