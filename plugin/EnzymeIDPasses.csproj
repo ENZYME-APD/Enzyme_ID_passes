@@ -18,7 +18,7 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>0.2.0</Version> <!-- Sets the Yak Version Attribute -->
+    <Version>0.2.1</Version> <!-- Sets the Yak Version Attribute -->
     <Title>Enzyme ID Passes</Title>
     <Company>Enzyme Digital Solutions</Company><!-- Sets the Yak Author Attribute -->
     <Description>Export Material / Object / Layer ID passes from Named Views using a temporary display override.</Description><!-- Sets the Yak Description Attribute -->
