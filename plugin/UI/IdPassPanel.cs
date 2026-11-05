@@ -16,22 +16,22 @@ namespace EnzymeIDPasses.UI
   {
     readonly StackLayout _viewList = new StackLayout { Spacing = 2, HorizontalContentAlignment = HorizontalAlignment.Stretch };
     readonly List<CheckBox> _viewChecks = new List<CheckBox>();
-    readonly CheckBox _mat = new CheckBox { Text = "Material ID" };
-    readonly CheckBox _obj = new CheckBox { Text = "Object ID" };
-    readonly CheckBox _lay = new CheckBox { Text = "Layer ID" };
-    readonly CheckBox _nrm = new CheckBox { Text = "Normals" };
-    readonly CheckBox _vpt = new CheckBox { Text = "Viewport (as displayed)" };
+    readonly CheckBox _mat = new CheckBox { Text = "Material ID", ToolTip = "One flat colour per render material" };
+    readonly CheckBox _obj = new CheckBox { Text = "Object ID", ToolTip = "One flat colour per object (blocks count as one)" };
+    readonly CheckBox _lay = new CheckBox { Text = "Layer ID", ToolTip = "One flat colour per layer" };
+    readonly CheckBox _nrm = new CheckBox { Text = "Normals", ToolTip = "World-space normals: red +X, green +Y, blue up" };
+    readonly CheckBox _vpt = new CheckBox { Text = "Viewport", ToolTip = "Standard capture of each view in the current display mode (e.g. Rendered)" };
     readonly NumericStepper _w = new NumericStepper { MinValue = 16, MaxValue = 16000, DecimalPlaces = 0 };
     readonly NumericStepper _h = new NumericStepper { MinValue = 16, MaxValue = 16000, DecimalPlaces = 0 };
     readonly TextBox _folder = new TextBox();
-    readonly CheckBox _snap = new CheckBox { Text = "Snap edges (remove anti-aliasing)" };
-    readonly CheckBox _legend = new CheckBox { Text = "Write legend (PNG sheet + CSV/JSON)" };
-    readonly CheckBox _preview = new CheckBox { Text = "Preview in viewports" };
+    readonly CheckBox _snap = new CheckBox { Text = "Clean edges", ToolTip = "Snap anti-aliased pixels to the exact ID colours" };
+    readonly CheckBox _legend = new CheckBox { Text = "Legend", ToolTip = "Write a PNG legend sheet plus CSV/JSON" };
+    readonly CheckBox _preview = new CheckBox { Text = "Show in viewports", ToolTip = "Toggle the ID colours live in the viewports" };
     readonly DropDown _previewMode = new DropDown { DataStore = Enum.GetNames(typeof(PassMode)) };
     readonly GridView _legendGrid;
     readonly ObservableCollection<LegendRow> _legendRows = new ObservableCollection<LegendRow>();
     readonly Label _status = new Label { Text = "Ready", Wrap = WrapMode.Word, TextAlignment = TextAlignment.Left };
-    readonly Button _export = new Button { Text = "Export ID passes" };
+    readonly Button _export = new Button { Text = "Export", ToolTip = "Export the selected passes for the ticked named views" };
 
     IdOverrideConduit _conduit;
     uint _docSerial;
@@ -72,7 +72,7 @@ namespace EnzymeIDPasses.UI
         if (dlg.ShowDialog(this) == DialogResult.Ok) _folder.Text = dlg.Directory;
       };
 
-      var fromView = new Button { Text = "From viewport" };
+      var fromView = new Button { Text = "From viewport", ToolTip = "Use the active viewport size" };
       fromView.Click += (o, e) =>
       {
         var v = RhinoDoc.ActiveDoc?.Views.ActiveView;
@@ -90,12 +90,11 @@ namespace EnzymeIDPasses.UI
       _w.Width = _h.Width = -1;
       _previewMode.Width = -1;
       _status.Width = -1;
-      foreach (var b in new[] { refresh, all, none }) b.MinimumSize = new Size(60, 0);
 
       var layout = new DynamicLayout { Padding = new Padding(10), DefaultSpacing = new Size(6, 6) };
 
       layout.AddRow(Header("Named views"));
-      layout.AddSeparateRow(null, refresh, all, none);
+      layout.AddRow(new TableLayout(new TableRow(new TableCell(refresh, true), new TableCell(all, true), new TableCell(none, true))) { Spacing = new Size(4, 0) });
       layout.AddRow(new Scrollable { Content = _viewList, Height = 140, Border = BorderType.Line, ExpandContentWidth = true });
 
       layout.AddRow(Header("Passes"));
@@ -107,12 +106,12 @@ namespace EnzymeIDPasses.UI
       layout.AddRow(_nrm);
       layout.EndVertical();
 
-      layout.AddRow(Header("Resolution"));
+      layout.AddRow(Header("Resolution (px)"));
       layout.BeginVertical(spacing: new Size(6, 6));
-      layout.AddRow(FieldLabel("Width"), _w, FieldLabel("px", 20));
-      layout.AddRow(FieldLabel("Height"), _h, FieldLabel("px", 20));
+      layout.AddRow(FieldLabel("Width"), _w);
+      layout.AddRow(FieldLabel("Height"), _h);
       layout.EndVertical();
-      layout.AddSeparateRow(null, fromView);
+      layout.AddRow(fromView);
 
       layout.AddRow(Header("Output"));
       layout.AddRow(new TableLayout(new TableRow(new TableCell(_folder, true), browse)) { Spacing = new Size(4, 0) });
@@ -136,7 +135,8 @@ namespace EnzymeIDPasses.UI
       layout.AddRow(_status);
       layout.Add(null); // push everything to the top
 
-      layout.MinimumSize = new Size(MinWidth, 0);
+      // Rhino can't enforce a minimum width for docked panels, so the layout shrinks with the
+      // panel instead of scrolling sideways: short labels (full text in tooltips), stretchy fields.
       Content = new Scrollable { Border = BorderType.None, ExpandContentWidth = true, ExpandContentHeight = true, Content = layout };
 
       RhinoDoc.EndOpenDocument += OnDocChanged;
@@ -144,8 +144,6 @@ namespace EnzymeIDPasses.UI
       RhinoDoc.CloseDocument += OnDocClosed;
       RefreshViews();
     }
-
-    const int MinWidth = 280;
 
     /// <summary>Section header: left-aligned bold title with a thin divider (Rhino panel style).</summary>
     static Control Header(string t) => new StackLayout
