@@ -30,7 +30,7 @@ namespace EnzymeIDPasses.UI
     readonly DropDown _previewMode = new DropDown { DataStore = Enum.GetNames(typeof(PassMode)) };
     readonly GridView _legendGrid;
     readonly ObservableCollection<LegendRow> _legendRows = new ObservableCollection<LegendRow>();
-    readonly Label _status = new Label { Text = "Ready", Wrap = WrapMode.Word };
+    readonly Label _status = new Label { Text = "Ready", Wrap = WrapMode.Word, TextAlignment = TextAlignment.Left };
     readonly Button _export = new Button { Text = "Export ID passes" };
 
     IdOverrideConduit _conduit;
@@ -130,7 +130,7 @@ namespace EnzymeIDPasses.UI
       layout.EndVertical();
       layout.AddRow(_legendGrid);
 
-      layout.AddRow(new Label { Height = 4 });
+      layout.AddRow(new Panel { Height = 6 });
       _export.Height = 30;
       layout.AddRow(_export);
       layout.AddRow(_status);
@@ -147,10 +147,21 @@ namespace EnzymeIDPasses.UI
 
     const int MinWidth = 280;
 
-    static Label Header(string t) => new Label { Text = t, Font = SystemFonts.Bold(), VerticalAlignment = VerticalAlignment.Bottom, Height = 24 };
+    /// <summary>Section header: left-aligned bold title with a thin divider (Rhino panel style).</summary>
+    static Control Header(string t) => new StackLayout
+    {
+      Padding = new Padding(0, 10, 0, 2),
+      Spacing = 4,
+      HorizontalContentAlignment = HorizontalAlignment.Stretch,
+      Items =
+      {
+        new Label { Text = t, Font = SystemFonts.Bold(), TextAlignment = TextAlignment.Left },
+        new Panel { Height = 1, BackgroundColor = Color.FromArgb(128, 128, 128, 90) }
+      }
+    };
 
     static Label FieldLabel(string t, int width = 52) =>
-      new Label { Text = t, Width = width, VerticalAlignment = VerticalAlignment.Center };
+      new Label { Text = t, Width = width, TextAlignment = TextAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
 
     RhinoDoc Doc => RhinoDoc.FromRuntimeSerialNumber(_docSerial) ?? RhinoDoc.ActiveDoc;
 
@@ -170,7 +181,7 @@ namespace EnzymeIDPasses.UI
           _viewList.Items.Add(cb);
         }
       }
-      if (_viewChecks.Count == 0) _viewList.Items.Add(new Label { Text = "No named views in this file." });
+      if (_viewChecks.Count == 0) _viewList.Items.Add(new Label { Text = "No named views in this file.", TextAlignment = TextAlignment.Left });
     }
 
     ExportSettings Gather()
